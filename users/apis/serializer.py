@@ -6,7 +6,5 @@ class UserTestSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    grade = serializers.IntegerField(min_value=1, max_value=3)
-    class_num = serializers.IntegerField(min_value=1)
-    num = serializers.IntegerField(min_value=1)
+    account_id = serializers.CharField()
     password = serializers.CharField(write_only=True, trim_whitespace=False)

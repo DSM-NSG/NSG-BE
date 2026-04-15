@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: nsg_postgresql
+      POSTGRES_USER: nsg_app
+      POSTGRES_PASSWORD: strong_password_here
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    environment:
+      SECRET_KEY: django-insecure-!^(u!i2h#-wxv$p#nrmc5r1t2%eza_)@tq-v7#z(r+v90qmvgl
+      DB_NAME: nsg_postgresql
+      DB_USER: nsg_app
+      DB_PASSWORD: strong_password_here
+      DB_HOST: db
+      DB_PORT: 5432
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+volumes:
+  postgres_data:

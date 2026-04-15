@@ -32,10 +32,8 @@
             "application/json": {
               "schema": { "$ref": "#/components/schemas/LoginRequest" },
               "example": {
-                "grade": 1,
-                "class_num": 2,
-                "num": 3,
-                "password": "password1234"
+                "account_id": "dodobird",
+                "password": "dsm1234!"
               }
             }
           }
@@ -51,11 +49,11 @@
                   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                   "user": {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "grade": 1,
+                    "account_id": "dodobird",
+                    "name": "변도휘",
+                    "grade": 2,
                     "class_num": 2,
-                    "num": 3,
-                    "name": "홍길동",
-                    "cohort": 5
+                    "num": 7
                   }
                 }
               }
@@ -682,12 +680,10 @@
     "schemas": {
       "LoginRequest": {
         "type": "object",
-        "required": ["grade", "class_num", "num", "password"],
+        "required": ["account_id", "password"],
         "properties": {
-          "grade": { "type": "integer", "minimum": 1, "maximum": 3, "example": 1 },
-          "class_num": { "type": "integer", "minimum": 1, "example": 2 },
-          "num": { "type": "integer", "minimum": 1, "example": 3 },
-          "password": { "type": "string", "example": "password1234" }
+          "account_id": { "type": "string", "example": "dodobird" },
+          "password": { "type": "string", "example": "dsm1234!" }
         }
       },
       "LoginResponse": {
@@ -715,11 +711,11 @@
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
+          "account_id": { "type": "string" },
+          "name": { "type": "string" },
           "grade": { "type": "integer" },
           "class_num": { "type": "integer" },
-          "num": { "type": "integer" },
-          "name": { "type": "string" },
-          "cohort": { "type": "integer" }
+          "num": { "type": "integer" }
         }
       },
       "AuthorReal": {

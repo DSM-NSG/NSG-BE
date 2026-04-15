@@ -21,6 +21,18 @@ class User(AbstractBaseUser):
         default=uuid.uuid4,
         editable=False
     )
+    account_id = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="DSM 계정 ID"
+    )
+    password_hash = models.CharField(
+        max_length=255,
+        default='',
+        verbose_name="비밀번호 해시"
+    )
     student_id = models.CharField(
         max_length=20,
         unique=True,
@@ -44,6 +56,8 @@ class User(AbstractBaseUser):
         verbose_name="이름"
     )
     cohort = models.IntegerField(
+        null=True,
+        blank=True,
         verbose_name="기수",
         help_text="대마고 기수"
     )
