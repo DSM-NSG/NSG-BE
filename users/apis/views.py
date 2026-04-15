@@ -1,9 +1,10 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from users.apis.serializer import LoginSerializer, UserTestSerializer
+from users.apis.serializer import LoginSerializer, LoginResponseSerializer, UserTestSerializer
 from users.service.auth_service import AuthService
 
 
@@ -24,6 +25,12 @@ class LoginView(APIView):
     permission_classes = []
     parser_classes = [JSONParser]
 
+    @extend_schema(
+        request=LoginSerializer,
+        responses={200: LoginResponseSerializer},
+        summary="로그인",
+        tags=["Auth"],
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

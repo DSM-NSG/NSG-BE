@@ -1,5 +1,7 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
+from rest_framework import status, serializers as drf_serializers
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,10 +9,12 @@ from rest_framework.views import APIView
 from config.exceptions import CustomAPIException
 from posts.apis.serializers import (
     CommentCreateSerializer,
+    CommentSerializer,
     MajorPostCreateSerializer,
     MajorPostDetailSerializer,
     MajorPostListSerializer,
     MajorSerializer,
+    ReplySerializer,
     TipCreateSerializer,
     TipDetailSerializer,
     TipListSerializer,
@@ -29,6 +33,11 @@ class MajorListView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        summary="전공 카테고리 목록",
+        tags=["Majors"],
+        responses={200: MajorSerializer(many=True)},
+    )
     def get(self, request):
         majors = Major.objects.order_by('major')
         return Response(MajorSerializer(majors, many=True).data)
@@ -42,6 +51,16 @@ class TipListView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        summary="꿀팁 게시글 목록",
+        tags=["Tips"],
+        parameters=[
+            OpenApiParameter(name='category', description='카테고리 필터', required=False, type=str),
+            OpenApiParameter(name='search', description='제목 검색', required=False, type=str),
+            OpenApiParameter(name='page', description='페이지 번호', required=False, type=int),
+        ],
+        responses={200: TipListSerializer(many=True)},
+    )
     def get(self, request):
         category = request.query_params.get('category')
         search = request.query_params.get('search')
@@ -57,7 +76,6 @@ class TipListView(APIView):
         if search:
             qs = qs.filter(title__icontains=search)
 
-        from rest_framework.pagination import PageNumberPagination
         paginator = PageNumberPagination()
         paginator.page_size = 20
         page = paginator.paginate_queryset(qs, request)
@@ -67,6 +85,12 @@ class TipListView(APIView):
 class TipCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="꿀팁 게시글 작성",
+        tags=["Tips"],
+        request=TipCreateSerializer,
+        responses={201: TipDetailSerializer},
+    )
     def post(self, request):
         serializer = TipCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -86,6 +110,11 @@ class TipDetailView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        summary="꿀팁 게시글 상세",
+        tags=["Tips"],
+        responses={200: TipDetailSerializer},
+    )
     def get(self, request, pk):
         post = get_object_or_404(
             Post.objects.select_related('author', 'place')
@@ -99,6 +128,11 @@ class TipDetailView(APIView):
 class TipDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="꿀팁 게시글 삭제",
+        tags=["Tips"],
+        responses={204: None},
+    )
     def delete(self, request, pk):
         try:
             delete_post(user=request.user, post_id=pk, post_type='TIP')
@@ -115,6 +149,16 @@ class MajorPostListView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        summary="전공 게시글 목록",
+        tags=["Major Posts"],
+        parameters=[
+            OpenApiParameter(name='major_id', description='전공 ID 필터', required=False, type=str),
+            OpenApiParameter(name='search', description='제목 검색', required=False, type=str),
+            OpenApiParameter(name='page', description='페이지 번호', required=False, type=int),
+        ],
+        responses={200: MajorPostListSerializer(many=True)},
+    )
     def get(self, request):
         major_id = request.query_params.get('major_id')
         search = request.query_params.get('search')
@@ -130,7 +174,6 @@ class MajorPostListView(APIView):
         if search:
             qs = qs.filter(title__icontains=search)
 
-        from rest_framework.pagination import PageNumberPagination
         paginator = PageNumberPagination()
         paginator.page_size = 20
         page = paginator.paginate_queryset(qs, request)
@@ -140,6 +183,12 @@ class MajorPostListView(APIView):
 class MajorPostCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="전공 게시글 작성",
+        tags=["Major Posts"],
+        request=MajorPostCreateSerializer,
+        responses={201: MajorPostDetailSerializer},
+    )
     def post(self, request):
         serializer = MajorPostCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -159,6 +208,11 @@ class MajorPostDetailView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        summary="전공 게시글 상세",
+        tags=["Major Posts"],
+        responses={200: MajorPostDetailSerializer},
+    )
     def get(self, request, pk):
         post = get_object_or_404(
             Post.objects.select_related('author')
@@ -175,6 +229,11 @@ class MajorPostDetailView(APIView):
 class MajorPostDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="전공 게시글 삭제",
+        tags=["Major Posts"],
+        responses={204: None},
+    )
     def delete(self, request, pk):
         try:
             delete_post(user=request.user, post_id=pk, post_type='MAJOR')
@@ -190,14 +249,19 @@ class MajorPostDeleteView(APIView):
 class CommentCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="댓글 작성",
+        tags=["Comments"],
+        request=CommentCreateSerializer,
+        responses={201: CommentSerializer},
+    )
     def post(self, request, post_id):
         serializer = CommentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         comment = create_comment(user=request.user, post_id=post_id, **serializer.validated_data)
 
-        from posts.apis.serializers import CommentSerializer
         post = comment.post
-        post.anonymous_users.all()  # trigger prefetch
+        post.anonymous_users.all()
         return Response(
             CommentSerializer(comment, context={'post': post}).data,
             status=status.HTTP_201_CREATED,
@@ -207,6 +271,12 @@ class CommentCreateView(APIView):
 class ReplyCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="대댓글 작성",
+        tags=["Comments"],
+        request=CommentCreateSerializer,
+        responses={201: ReplySerializer},
+    )
     def post(self, request, post_id, comment_id):
         serializer = CommentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -214,7 +284,6 @@ class ReplyCreateView(APIView):
             user=request.user, post_id=post_id, comment_id=comment_id, **serializer.validated_data
         )
 
-        from posts.apis.serializers import ReplySerializer
         post = reply.post
         post.anonymous_users.all()
         return Response(
@@ -226,6 +295,11 @@ class ReplyCreateView(APIView):
 class CommentDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="댓글 삭제",
+        tags=["Comments"],
+        responses={204: None},
+    )
     def delete(self, request, post_id, comment_id):
         try:
             delete_comment(user=request.user, post_id=post_id, comment_id=comment_id)
@@ -241,6 +315,20 @@ class CommentDeleteView(APIView):
 class LikeToggleView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="좋아요 토글",
+        tags=["Likes"],
+        request=None,
+        responses={
+            200: inline_serializer(
+                name='LikeToggleResponse',
+                fields={
+                    'is_liked': drf_serializers.BooleanField(),
+                    'like_count': drf_serializers.IntegerField(),
+                },
+            )
+        },
+    )
     def post(self, request, post_id):
         is_liked, like_count = toggle_like(user=request.user, post_id=post_id)
         return Response({"is_liked": is_liked, "like_count": like_count})

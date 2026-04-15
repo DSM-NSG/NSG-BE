@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +16,14 @@ class PlaceView(APIView):
             return [IsAuthenticated()]
         return []
 
+    @extend_schema(
+        summary="장소 목록",
+        tags=["Places"],
+        parameters=[
+            OpenApiParameter(name='category', description='카테고리 필터', required=False, type=str),
+        ],
+        responses={200: PlaceSerializer(many=True)},
+    )
     def get(self, request):
         category = request.query_params.get('category')
         qs = Place.objects.select_related('author').order_by('-created_at')
@@ -22,6 +31,12 @@ class PlaceView(APIView):
             qs = qs.filter(category=category)
         return Response(PlaceSerializer(qs, many=True).data)
 
+    @extend_schema(
+        summary="장소 등록",
+        tags=["Places"],
+        request=PlaceCreateSerializer,
+        responses={201: PlaceSerializer},
+    )
     def post(self, request):
         serializer = PlaceCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -32,6 +47,11 @@ class PlaceView(APIView):
 class PlaceDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="장소 삭제",
+        tags=["Places"],
+        responses={204: None},
+    )
     def delete(self, request, pk):
         try:
             delete_place(user=request.user, place_id=pk)
