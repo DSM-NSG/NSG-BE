@@ -29,8 +29,6 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "52.79.105.138",
-    "localhost",
     "*"
 ]
 
