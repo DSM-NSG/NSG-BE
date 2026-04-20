@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 from django.contrib.auth.hashers import make_password, check_password
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -10,6 +11,10 @@ class AuthService:
     DSM_LOGIN_URL = "https://dsm-login.dsmhs.kr/dsm-login/user/user-data"
 
     @staticmethod
+    def _calculate_cohort(grade):
+        return datetime.now().year - grade - 2013
+
+    @staticmethod
     def login(*, account_id, password):
         # 1. 로컬 DB 확인
         try:
@@ -18,6 +23,11 @@ class AuthService:
             # 기존 유저: 비밀번호 해시 검증
             if not check_password(password, user.password_hash):
                 raise InvalidCredentialsException()
+
+            # cohort가 없으면 계산하여 저장
+            if user.cohort is None:
+                user.cohort = AuthService._calculate_cohort(user.grade)
+                user.save(update_fields=["cohort"])
 
         except User.DoesNotExist:
             # 2. 없으면 외부 DSM API 호출
@@ -44,6 +54,7 @@ class AuthService:
                 class_num=data["class_num"],
                 num=data["num"],
                 name=data["name"],
+                cohort=AuthService._calculate_cohort(data["grade"]),
                 password_hash=make_password(password),
             )
 
