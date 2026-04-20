@@ -1,11 +1,25 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.parsers import JSONParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from users.apis.serializer import LoginSerializer, LoginResponseSerializer, UserTestSerializer
+from users.apis.serializer import LoginSerializer, LoginResponseSerializer, MyPageSerializer, UserTestSerializer
 from users.service.auth_service import AuthService
+
+
+class MyPageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: MyPageSerializer},
+        summary="마이페이지 조회",
+        tags=["Users"],
+    )
+    def get(self, request):
+        serializer = MyPageSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserTestView(APIView):

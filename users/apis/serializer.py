@@ -23,3 +23,11 @@ class LoginResponseSerializer(serializers.Serializer):
     access_token = serializers.CharField()
     refresh_token = serializers.CharField()
     user = UserInfoSerializer()
+
+
+class MyPageSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField(source='id')
+    grade = serializers.IntegerField()
+    class_num = serializers.IntegerField()
+    num = serializers.IntegerField()
+    cohort = serializers.IntegerField(allow_null=True)
