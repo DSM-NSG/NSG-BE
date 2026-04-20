@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'users',
     'posts',
     'places',
+    'images',
     'rest_framework_simplejwt'
 ]
 
@@ -194,3 +195,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# S3
+AWS_ACCESS_KEY = env("AWS_ACCESS_KEY")
+AWS_SECRET_KEY = env("AWS_SECRET_KEY")
+AWS_BUCKET = env("AWS_BUCKET")
+AWS_STATIC = env("AWS_STATIC")
