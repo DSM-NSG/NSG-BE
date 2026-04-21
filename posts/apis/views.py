@@ -5,6 +5,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from config.exceptions import CustomAPIException
 from posts.apis.serializers import (
@@ -48,7 +49,7 @@ class MajorListView(APIView):
 # ──────────────────────────────────────────
 
 class TipListView(APIView):
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]
     permission_classes = []
 
     @extend_schema(
@@ -107,7 +108,7 @@ class TipCreateView(APIView):
 
 
 class TipDetailView(APIView):
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]
     permission_classes = []
 
     @extend_schema(
@@ -146,7 +147,7 @@ class TipDeleteView(APIView):
 # ──────────────────────────────────────────
 
 class MajorPostListView(APIView):
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]
     permission_classes = []
 
     @extend_schema(
@@ -205,7 +206,7 @@ class MajorPostCreateView(APIView):
 
 
 class MajorPostDetailView(APIView):
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]
     permission_classes = []
 
     @extend_schema(
