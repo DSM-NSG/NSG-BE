@@ -15,6 +15,7 @@ from posts.apis.serializers import (
     MajorPostDetailSerializer,
     MajorPostListSerializer,
     MajorSerializer,
+    PopularMajorTagSerializer,
     ReplySerializer,
     TipCreateSerializer,
     TipDetailSerializer,
@@ -23,7 +24,7 @@ from posts.apis.serializers import (
 from posts.models import Major, Post
 from posts.service.comment_service import create_comment, create_reply, delete_comment
 from posts.service.like_service import toggle_like
-from posts.service.post_service import create_major_post, create_tip, delete_post
+from posts.service.post_service import create_major_post, create_tip, delete_post, get_popular_major_tags
 
 
 # ──────────────────────────────────────────
@@ -42,6 +43,20 @@ class MajorListView(APIView):
     def get(self, request):
         majors = Major.objects.order_by('major')
         return Response(MajorSerializer(majors, many=True).data)
+
+
+class PopularMajorTagView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        summary="인기 전공 태그 Top 10",
+        tags=["Majors"],
+        responses={200: PopularMajorTagSerializer(many=True)},
+    )
+    def get(self, request):
+        result = get_popular_major_tags(top_n=10)
+        return Response(PopularMajorTagSerializer(result, many=True).data)
 
 
 # ──────────────────────────────────────────

@@ -40,6 +40,14 @@ class MajorSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 
+class PopularMajorTagSerializer(serializers.Serializer):
+    id = serializers.UUIDField(source='major.id')
+    name = serializers.CharField(source='major.major')
+    post_count = serializers.IntegerField()
+    total_likes = serializers.IntegerField()
+    score = serializers.FloatField()
+
+
 # ──────────────────────────────────────────
 # PostImage
 # ──────────────────────────────────────────

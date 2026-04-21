@@ -9,6 +9,7 @@ from posts.apis.views import (
     MajorPostDeleteView,
     MajorPostDetailView,
     MajorPostListView,
+    PopularMajorTagView,
     ReplyCreateView,
     TipCreateView,
     TipDeleteView,
@@ -19,6 +20,7 @@ from posts.apis.views import (
 urlpatterns = [
     # 전공 카테고리
     path('majors/', MajorListView.as_view(), name='major-list'),
+    path('majors/popular/', PopularMajorTagView.as_view(), name='major-popular'),
 
     # 꿀팁 게시글
     path('posts/tips/', TipListView.as_view(), name='tip-list'),
