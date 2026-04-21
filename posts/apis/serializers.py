@@ -17,6 +17,7 @@ def _author_data(obj, post):
         return None
     if not obj.is_anonymous:
         return {
+            "author_id": str(obj.author.id),
             "grade": obj.author.grade,
             "class_num": obj.author.class_num,
             "num": obj.author.num,
