@@ -106,10 +106,11 @@ class TipListSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     comment_count = serializers.SerializerMethodField()
     has_images = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'title', 'category', 'like_count', 'comment_count', 'has_images', 'created_at']
+        fields = ['id', 'author', 'title', 'body', 'category', 'like_count', 'is_liked', 'comment_count', 'has_images', 'created_at']
 
     def get_author(self, obj):
         return _author_data(obj, obj)
@@ -119,6 +120,12 @@ class TipListSerializer(serializers.ModelSerializer):
 
     def get_has_images(self, obj):
         return obj.images.exists()
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.likes.filter(user=request.user).exists()
 
 
 class TipDetailSerializer(serializers.ModelSerializer):
@@ -178,10 +185,11 @@ class MajorPostListSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     majors = serializers.SerializerMethodField()
     comment_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'title', 'majors', 'like_count', 'comment_count', 'created_at']
+        fields = ['id', 'author', 'title', 'body', 'majors', 'like_count', 'is_liked', 'comment_count', 'created_at']
 
     def get_author(self, obj):
         return _author_data(obj, obj)
@@ -191,6 +199,12 @@ class MajorPostListSerializer(serializers.ModelSerializer):
 
     def get_comment_count(self, obj):
         return obj.comments.count()
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.likes.filter(user=request.user).exists()
 
 
 class MajorPostDetailSerializer(serializers.ModelSerializer):

@@ -68,7 +68,7 @@ class TipListView(APIView):
         qs = (
             Post.objects.filter(post_type='TIP')
             .select_related('author')
-            .prefetch_related('anonymous_users', 'images', 'comments')
+            .prefetch_related('anonymous_users', 'images', 'comments', 'likes')
             .order_by('-created_at')
         )
         if category:
@@ -79,7 +79,7 @@ class TipListView(APIView):
         paginator = PageNumberPagination()
         paginator.page_size = 20
         page = paginator.paginate_queryset(qs, request)
-        return paginator.get_paginated_response(TipListSerializer(page, many=True).data)
+        return paginator.get_paginated_response(TipListSerializer(page, many=True, context={'request': request}).data)
 
 
 class TipCreateView(APIView):
@@ -166,7 +166,7 @@ class MajorPostListView(APIView):
         qs = (
             Post.objects.filter(post_type='MAJOR')
             .select_related('author')
-            .prefetch_related('anonymous_users', 'major_tags__major', 'comments')
+            .prefetch_related('anonymous_users', 'major_tags__major', 'comments', 'likes')
             .order_by('-created_at')
         )
         if major_id:
@@ -177,7 +177,7 @@ class MajorPostListView(APIView):
         paginator = PageNumberPagination()
         paginator.page_size = 20
         page = paginator.paginate_queryset(qs, request)
-        return paginator.get_paginated_response(MajorPostListSerializer(page, many=True).data)
+        return paginator.get_paginated_response(MajorPostListSerializer(page, many=True, context={'request': request}).data)
 
 
 class MajorPostCreateView(APIView):
