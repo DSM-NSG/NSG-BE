@@ -3,8 +3,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.contrib.auth.hashers import make_password
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from tests.factories import UserFactory
+from users.models import User
+
+
+def auth_client(user):
+    client = APIClient()
+    token = RefreshToken.for_user(user)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(token.access_token)}")
+    return client
 
 
 @pytest.fixture
@@ -91,3 +100,33 @@ class TestLoginAPI:
         assert resp.status_code == 200
         assert str(resp.data["user_id"]) == str(user.id)
         assert resp.data["grade"] == user.grade
+
+
+@pytest.mark.django_db
+class TestWithdrawAPI:
+    def test_회원탈퇴_성공(self):
+        user = UserFactory()
+        c = auth_client(user)
+
+        resp = c.delete("/users/me/withdraw/")
+
+        assert resp.status_code == 204
+        user.refresh_from_db()
+        assert user.is_active is False
+        assert user.name == "알 수 없는 사용자"
+        assert user.account_id is None
+        assert user.student_id == f"withdrawn_{user.id}"
+
+    def test_탈퇴_후_토큰_무효화(self):
+        user = UserFactory()
+        c = auth_client(user)
+        c.delete("/users/me/withdraw/")
+
+        resp = c.get("/users/me/")
+
+        assert resp.status_code == 401
+
+    def test_미인증_탈퇴_401(self):
+        resp = APIClient().delete("/users/me/withdraw/")
+
+        assert resp.status_code == 401

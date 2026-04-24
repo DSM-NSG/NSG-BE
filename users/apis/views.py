@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from users.apis.serializer import LoginSerializer, LoginResponseSerializer, MyPageSerializer, UserTestSerializer
 from users.service.auth_service import AuthService
+from users.service.user_service import withdraw_user
 
 
 class MyPageView(APIView):
@@ -32,6 +33,19 @@ class UserTestView(APIView):
             {"message": f"{name}"},
             status=status.HTTP_200_OK,
         )
+
+
+class WithdrawView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="회원탈퇴",
+        tags=["Users"],
+        responses={204: None},
+    )
+    def delete(self, request):
+        withdraw_user(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LoginView(APIView):
