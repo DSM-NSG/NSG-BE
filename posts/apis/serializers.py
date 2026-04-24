@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from posts.models import Post, PostImage, PostAnonymousUser, Comment, Major, MajorTag
 
@@ -39,6 +40,19 @@ class MajorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Major
         fields = ['id', 'name']
+
+
+class MajorCreateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        source='major',
+        max_length=100,
+        validators=[UniqueValidator(queryset=Major.objects.all(), message="이미 존재하는 전공입니다.")],
+    )
+
+    class Meta:
+        model = Major
+        fields = ['id', 'name']
+        read_only_fields = ['id']
 
 
 class PopularMajorTagSerializer(serializers.Serializer):

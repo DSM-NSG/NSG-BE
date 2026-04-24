@@ -4,6 +4,7 @@ from posts.apis.views import (
     CommentCreateView,
     CommentDeleteView,
     LikeToggleView,
+    MajorCreateView,
     MajorListView,
     MajorPostCreateView,
     MajorPostDeleteView,
@@ -20,6 +21,7 @@ from posts.apis.views import (
 urlpatterns = [
     # 전공 카테고리
     path('majors/', MajorListView.as_view(), name='major-list'),
+    path('majors/create/', MajorCreateView.as_view(), name='major-create'),
     path('majors/popular/', PopularMajorTagView.as_view(), name='major-popular'),
 
     # 꿀팁 게시글

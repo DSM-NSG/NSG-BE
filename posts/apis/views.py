@@ -11,6 +11,7 @@ from config.exceptions import CustomAPIException
 from posts.apis.serializers import (
     CommentCreateSerializer,
     CommentSerializer,
+    MajorCreateSerializer,
     MajorPostCreateSerializer,
     MajorPostDetailSerializer,
     MajorPostListSerializer,
@@ -43,6 +44,22 @@ class MajorListView(APIView):
     def get(self, request):
         majors = Major.objects.order_by('major')
         return Response(MajorSerializer(majors, many=True).data)
+
+
+class MajorCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="전공 카테고리 생성",
+        tags=["Majors"],
+        request=MajorCreateSerializer,
+        responses={201: MajorCreateSerializer},
+    )
+    def post(self, request):
+        serializer = MajorCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class PopularMajorTagView(APIView):
