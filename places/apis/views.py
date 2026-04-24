@@ -1,5 +1,6 @@
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,6 +9,8 @@ from config.exceptions import CustomAPIException
 from places.apis.serializers import PlaceCreateSerializer, PlaceSerializer
 from places.models import Place
 from places.service.place_service import create_place, delete_place
+from posts.models import Post
+from posts.apis.serializers import TipListSerializer
 
 
 class PlaceView(APIView):
@@ -58,3 +61,23 @@ class PlaceDetailView(APIView):
         except PermissionError:
             raise CustomAPIException("본인의 장소만 삭제할 수 있습니다.")
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PlacePostsView(APIView):
+    @extend_schema(
+        summary="장소별 게시글 목록",
+        tags=["Places"],
+        responses={200: TipListSerializer(many=True)},
+    )
+    def get(self, request, pk):
+        qs = (
+            Post.objects.filter(place_id=pk, post_type='TIP')
+            .select_related('author')
+            .prefetch_related('anonymous_users', 'images', 'likes')
+            .order_by('-created_at')
+        )
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        page = paginator.paginate_queryset(qs, request)
+        serializer = TipListSerializer(page, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data)
