@@ -72,7 +72,15 @@ def get_popular_major_tags(*, top_n=10):
     """
     인기 전공 태그 top_n개 반환.
     점수 = Σ (1.0 + like_count × 2.0) × 1 / (1 + 경과일수 × 0.1)
+    게시글이 없는 전공도 포함하여 항상 top_n개 반환.
     """
+    from posts.models import Major
+
+    scores = {
+        major.id: {'major': major, 'score': 0.0, 'post_count': 0, 'total_likes': 0}
+        for major in Major.objects.all()
+    }
+
     major_tags = (
         MajorTag.objects
         .filter(post__post_type='MAJOR')
@@ -81,16 +89,15 @@ def get_popular_major_tags(*, top_n=10):
     )
 
     now = django_timezone.now()
-    scores = defaultdict(lambda: {'major': None, 'score': 0.0, 'post_count': 0, 'total_likes': 0})
-
     for mt in major_tags:
+        if mt.major_id not in scores:
+            continue
         post = mt.post
         days_elapsed = (now - post.created_at).total_seconds() / 86400
         decay = 1.0 / (1.0 + days_elapsed * 0.1)
         post_score = (1.0 + post.like_count * 2.0) * decay
 
         entry = scores[mt.major_id]
-        entry['major'] = mt.major
         entry['score'] += post_score
         entry['post_count'] += 1
         entry['total_likes'] += post.like_count
