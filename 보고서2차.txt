@@ -1,0 +1,116 @@
+========================================
+개발 일지 2차 (2026.04.05 ~ 2026.04.12)
+========================================
+
+■ 이번 주 목표 및 진행률
+
+- 장소 공유 API 구현 - 100% 완료
+- AWS S3 이미지 업로드 API 구현 - 100% 완료
+- drf-spectacular 기반 Swagger 문서화 - 100% 완료
+- 게시글 응답 필드 보완 (is_liked, body, author_id) - 100% 완료
+- 전공 목록 조회 API - 100% 완료
+
+
+■ 주요 개발 내용
+
+1. 장소 공유 API
+
+  학교 주변 장소를 공유하는 기능을 구현했다.
+  장소는 위도/경도 좌표와 네이버지도 링크를 저장하며,
+  게시글 작성 시 place_id를 연결하면 해당 장소에서 작성된 글로 분류된다.
+
+  GET    /                   - 장소 목록 (category 필터 가능)
+  POST   /                   - 장소 등록 (인증 필요)
+  DELETE /<place_id>/        - 장소 삭제 (본인만)
+
+  [장소 카테고리]
+  RESTAURANT(맛집), CAFE(카페), PC_ROOM(PC방), KARAOKE(노래방), ETC(기타)
+
+2. AWS S3 이미지 업로드 API
+
+  게시글에 첨부할 이미지를 S3에 업로드하는 API를 구현했다.
+  서버가 이미지를 받아 S3에 전달하는 방식을 채택했다.
+
+  POST /images/upload/
+  Authorization: Bearer <token>
+  Content-Type: multipart/form-data
+  Body: { "image": <file> }
+  Response: { "url": "https://s3.amazonaws.com/..." }
+
+  게시글 작성 시 image_urls 배열에 반환된 URL을 포함하면
+  PostImage 테이블에 order_index와 함께 저장된다.
+  boto3를 직접 사용하며 AWS 자격증명은 환경변수로 관리한다.
+
+3. Swagger 문서화
+
+  drf-spectacular를 도입해 OpenAPI 3.0 스펙을 자동 생성한다.
+
+  GET /api/schema/   - OpenAPI JSON 스펙
+  GET /api/swagger/  - Swagger UI
+
+  각 View에 @extend_schema 데코레이터로 summary, tags, 요청/응답 스키마를 명시했다.
+  iOS, Flutter 팀에 Swagger URL을 공유해 별도 문서 없이 API 명세를 확인할 수 있게 됐다.
+
+4. 게시글 응답 필드 보완
+
+  클라이언트 팀 요청에 따라 아래 필드들을 게시글 응답에 추가했다.
+
+  - is_liked  : 현재 로그인 유저의 좋아요 여부 (비인증 시 false)
+  - body      : 목록 응답에도 본문 포함
+  - author_id : 작성자 UUID
+
+  목록 / 상세 응답 모두 반영. Serializer의 SerializerMethodField로 구현.
+
+5. 전공 목록 조회 API
+
+  GET /majors/   - 전체 전공 목록 반환
+  Response: [ { "id": "uuid", "name": "백엔드" }, ... ]
+
+
+■ 이슈 관리 및 해결 과정
+
+[이슈 1] S3 환경변수 누락으로 ImproperlyConfigured 오류
+
+  - 발생한 이슈:
+    AWS 관련 환경변수 없이 서버를 실행하면
+    Django 설정 로딩 시점에 ImproperlyConfigured 예외가 발생했다.
+
+  - 원인 분석:
+    django-environ으로 .env 파일을 로드하는 구조인데,
+    AWS 키가 누락된 경우 settings.py 임포트 자체가 실패했다.
+
+  - 해결 과정 및 결과:
+    .env.example 파일을 작성해 팀원 간 공유하고,
+    테스트 환경용 test_settings.py를 분리해 더미 환경변수를 설정했다.
+
+[이슈 2] Pillow 미설치로 이미지 처리 오류
+
+  - 발생한 이슈:
+    이미지 업로드 기능 개발 중 Pillow 관련 ImportError 발생.
+
+  - 원인 분석:
+    Django의 이미지 처리가 Pillow에 의존하는데 requirements.txt에 누락되어 있었다.
+
+  - 해결 과정 및 결과:
+    requirements.txt에 Pillow 추가 후 pip install 재실행으로 해결.
+
+
+■ KPT 회고 및 차주 계획
+
+Keep:
+  - Swagger 도입 후 클라이언트 팀과의 소통 비용이 크게 줄었다.
+  - 환경변수를 환경별(운영/테스트)로 분리한 구조가 명확하다.
+
+Problem:
+  - 아직 테스트 코드가 없어 기능 수정 시 회귀 여부를 수동으로 확인해야 했다.
+  - 클라이언트 요청으로 응답 필드가 자주 추가되어 Serializer 수정이 반복됐다.
+
+Try:
+  - pytest-django + factory_boy로 테스트 코드를 도입해 회귀 테스트를 자동화한다.
+
+차주 개발 계획:
+  - pytest-django 기반 테스트 코드 작성 (service 단위 + API 통합 테스트)
+  - 전공 카테고리 생성 API 추가 (POST /majors/create/)
+  - 인기 전공 태그 Top N API 구현 (점수 기반 랭킹)
+  - 회원탈퇴 API 구현 (소프트 삭제 + PII 초기화)
+  - Docker / docker-compose 배포 환경 구성

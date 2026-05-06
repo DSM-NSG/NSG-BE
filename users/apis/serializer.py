@@ -14,6 +14,7 @@ class UserInfoSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     account_id = serializers.CharField()
     name = serializers.CharField()
+    cohort = serializers.IntegerField(allow_null=True)
     grade = serializers.IntegerField()
     class_num = serializers.IntegerField()
     num = serializers.IntegerField()

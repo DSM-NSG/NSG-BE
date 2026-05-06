@@ -8,6 +8,7 @@ def _author_data(obj):
     if obj.author is None or obj.is_anonymous:
         return None
     return {
+        "cohort": obj.author.cohort,
         "grade": obj.author.grade,
         "class_num": obj.author.class_num,
         "num": obj.author.num,

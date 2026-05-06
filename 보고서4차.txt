@@ -1,0 +1,123 @@
+========================================
+개발 일지 4차 (2026.04.20 ~ 2026.04.26)
+========================================
+
+■ 이번 주 목표 및 진행률
+
+- AWS EC2 인스턴스 Docker + docker-compose 배포 - 100% 완료
+- 클라이언트 연동 테스트 대응 - 100% 완료
+- 장소별 게시글 조회 API - 100% 완료
+- 배포 안정화 - 100% 완료
+
+
+■ 주요 개발 내용
+
+1. AWS EC2 배포 (Docker + docker-compose)
+
+  AWS EC2(Ubuntu) 인스턴스에 SSH로 접속해 서비스를 배포했다.
+  Docker 컨테이너로 Django 앱과 Nginx를 구성하고
+  docker-compose로 멀티 컨테이너를 한 번에 관리한다.
+
+  [배포 구성]
+  EC2 (Ubuntu)
+  └── docker-compose
+      ├── web (Django + Gunicorn)
+      └── nginx (리버스 프록시)
+
+  PostgreSQL은 외부 DB 서버에 연결.
+
+  [배포 절차]
+  1. SSH로 EC2 접속
+     $ ssh -i <key.pem> ubuntu@<EC2_IP>
+
+  2. Docker, docker-compose 설치
+     $ sudo apt update && sudo apt install docker.io docker-compose -y
+
+  3. 소스코드 클론 및 .env 설정
+     $ git clone <repo_url>
+     $ cd NSG-BE && cp .env.example .env
+     # .env에 DB, AWS, SECRET_KEY 등 환경변수 입력
+
+  4. 컨테이너 빌드 및 실행
+     $ docker-compose up -d --build
+
+  5. 마이그레이션 자동 실행
+     entrypoint 스크립트에 DB 준비 대기 루프와 migrate 명령이 설정되어 있어
+     컨테이너 시작 시 자동으로 마이그레이션이 적용된다.
+
+  배포 완료 후 클라이언트 팀(iOS, Flutter)에 서버 IP를 공유해 연동 진행.
+
+2. 장소별 게시글 조회 API
+
+  특정 장소에서 작성된 TIP 게시글 목록을 반환하는 API를 추가했다.
+
+  GET /<place_id>/posts/
+  Response: {
+    "count": 5,
+    "next": null,
+    "previous": null,
+    "results": [ { "id": ..., "title": ..., "body": ..., "is_liked": ..., ... } ]
+  }
+
+  Post.place FK를 활용해 특정 장소에 태그된 TIP 게시글만 필터링한다.
+  페이지네이션 20개/page 적용.
+
+3. 클라이언트 연동 대응
+
+  iOS, Flutter 팀이 배포 서버에 연결하면서 발생한 이슈에 대응했다.
+
+  - CORS 설정 확인 및 ALLOWED_HOSTS 보완
+  - 일부 응답 필드 누락 수정
+  - Swagger UI로 실시간 API 명세 공유
+
+
+■ 이슈 관리 및 해결 과정
+
+[이슈 1] Docker 컨테이너에서 PostgreSQL 연결 실패
+
+  - 발생한 이슈:
+    로컬에서는 정상 동작하던 DB 연결이 EC2 컨테이너 환경에서
+    connection refused 오류로 실패했다.
+
+  - 원인 분석:
+    .env의 DB_HOST를 localhost로 설정했는데,
+    Docker 컨테이너 내부에서 localhost는 컨테이너 자신을 가리키기 때문에
+    외부 DB 서버에 도달하지 못했다.
+
+  - 해결 과정 및 결과:
+    DB_HOST를 실제 DB 서버의 IP 주소로 변경하여 해결.
+    EC2 보안그룹 인바운드 규칙에도 PostgreSQL 포트(5432)를 추가했다.
+
+[이슈 2] 컨테이너 시작 시 마이그레이션 타이밍 문제
+
+  - 발생한 이슈:
+    docker-compose up 시 Django 컨테이너가 DB보다 먼저 시작되어
+    migrate 명령 실행 시 DB 연결 오류가 간헐적으로 발생했다.
+
+  - 원인 분석:
+    docker-compose의 depends_on은 컨테이너 시작 순서만 보장하고
+    DB가 실제로 ready 상태인지는 보장하지 않는다.
+
+  - 해결 과정 및 결과:
+    entrypoint 스크립트에 DB 연결 대기 루프를 추가해
+    DB가 응답할 때까지 재시도 후 migrate를 실행하도록 처리.
+
+
+■ KPT 회고 및 차주 계획
+
+Keep:
+  - Docker 기반 배포로 환경 차이에 따른 문제를 최소화했다.
+  - 테스트 코드 61개를 보유하고 있어 배포 후 회귀 여부를 빠르게 확인할 수 있었다.
+  - Swagger 문서 덕분에 클라이언트 팀과의 API 소통이 원활했다.
+
+Problem:
+  - 배포 환경 변수 설정(.env 작성)에 예상보다 시간이 소요됐다.
+  - 테스트 코드를 개발 후반부에 작성해 초기 버그를 조기에 잡지 못했다.
+
+Try:
+  - 다음 프로젝트에서는 TDD 방식 또는 개발과 테스트를 병행하는 방식을 적용한다.
+  - 배포 전 체크리스트(환경변수, 보안그룹, ALLOWED_HOSTS 등)를 문서화해 공유한다.
+
+차주 개발 계획:
+  - 서비스 운영 중 발생하는 버그 대응 및 안정화
+  - 클라이언트 요청에 따른 추가 API 조정

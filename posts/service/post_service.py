@@ -108,6 +108,7 @@ def get_popular_major_tags(*, top_n=10):
 
 def delete_post(*, user, post_id, post_type):
     post = get_object_or_404(Post, id=post_id, post_type=post_type)
+
     if post.author != user:
         raise PermissionError()
     post.delete()

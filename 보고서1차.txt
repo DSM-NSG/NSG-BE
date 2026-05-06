@@ -1,0 +1,142 @@
+========================================
+개발 일지 1차 (2026.03.12 ~ 2026.04.04)
+========================================
+
+■ 이번 주 목표 및 진행률
+
+- 프로젝트 초기 환경 구성 및 ERD 설계 - 100% 완료
+- Django 모델 구현 - 100% 완료
+- 인증 API (로그인 / JWT 발급) - 100% 완료
+- 게시글 / 댓글 / 좋아요 API - 100% 완료
+
+
+■ 주요 개발 내용
+
+1. 프로젝트 초기 세팅
+
+  Django 6.0.3 + Django REST Framework 기반의 백엔드 프로젝트를 초기화했다.
+  패키지 관리는 pip, 데이터베이스는 PostgreSQL을 사용하며
+  JWT 인증을 위해 djangorestframework-simplejwt를 도입했다.
+
+  디렉토리 구조는 앱별로 models/, apis/, service/ 로 분리하는 레이어드 아키텍처를 채택했다.
+
+    NSG-BE/
+    ├── config/          # Django 설정
+    ├── users/           # 사용자 앱 (models/, apis/, service/)
+    ├── posts/           # 게시글 앱
+    ├── places/          # 장소 앱
+    └── images/          # 이미지 업로드 앱
+
+2. ERD 설계
+
+  서비스에 필요한 핵심 엔티티를 도출하고 관계를 정의했다.
+
+  - User: 학번, 이름, 학년/반/번호, 기수, DSM 계정 ID
+  - Post: TIP/MAJOR 게시글을 단일 모델로 통합, post_type 필드로 구분
+  - Comment: parent FK 자기참조로 댓글/대댓글 구현
+  - Like: 게시글 좋아요 (user + post unique 제약)
+  - Place: 장소 공유 (위도/경도, 네이버지도 링크)
+  - Major: 전공 카테고리
+  - MajorTag: Post ↔ Major N:M 중간 테이블
+  - PostAnonymousUser: 익명 게시글 내 익명 번호 매핑
+
+  모든 모델의 PK는 UUID 사용.
+
+3. 인증 API
+
+  DSM 학교 계정 기반 로그인을 구현했다.
+  로컬 DB에 계정이 있으면 비밀번호 검증, 없으면 DSM 외부 API로 인증 후 유저를 자동 생성한다.
+
+  [로그인 플로우]
+  클라이언트 요청
+      ↓
+  DB에 account_id 존재 여부 확인
+      ↓ (존재)              ↓ (미존재)
+  로컬 비밀번호 검증    DSM 외부 API 호출 → User 자동 생성
+      ↓
+  JWT (access + refresh) 발급 후 응답
+
+  POST /users/login/
+  Request:  { "account_id": "...", "password": "..." }
+  Response: { "access_token": "...", "refresh_token": "...", "user": { ... } }
+
+4. 게시글 / 댓글 / 좋아요 API
+
+  TIP, MAJOR 두 가지 게시글 유형의 CRUD를 구현했다.
+  비즈니스 로직은 service 레이어에 위치시키고, View는 직렬화 + 서비스 호출만 담당한다.
+
+  [TIP 게시글]
+  GET  /posts/tips/             - 목록 (category 필터, 페이지네이션)
+  POST /posts/tips/create/      - 생성 (인증 필요)
+  GET  /posts/tips/<id>/        - 상세
+  DEL  /posts/tips/<id>/delete/ - 삭제 (본인만)
+
+  [MAJOR 게시글]
+  GET  /posts/major/             - 목록
+  POST /posts/major/create/      - 생성 (major_ids 배열 필수)
+  DEL  /posts/major/<id>/delete/ - 삭제
+
+  [댓글/대댓글]
+  POST /posts/<post_id>/comments/                       - 댓글 작성
+  POST /posts/<post_id>/comments/<id>/replies/          - 대댓글 작성
+  DEL  /posts/<post_id>/comments/<id>/delete/           - 삭제 (본인만)
+
+  [좋아요 토글]
+  POST /posts/<post_id>/like/
+  Response: { "is_liked": true, "like_count": 5 }
+
+  좋아요 count는 F() 표현식으로 DB 레벨 원자적 증감 처리해 race condition을 방지했다.
+
+  [익명 처리]
+  익명 게시글은 PostAnonymousUser 테이블에 (post, user) → anonymous_number 매핑 저장.
+  select_for_update + transaction.atomic으로 동시성 문제 방지.
+
+
+■ 이슈 관리 및 해결 과정
+
+[이슈 1] Post 모델 통합 vs 분리 설계 고민
+
+  - 발생한 이슈:
+    TIP과 MAJOR 게시글의 구조가 달라 별도 모델로 분리할지 단일 모델로 통합할지 결정이 필요했다.
+
+  - 원인 분석:
+    두 유형이 공통 필드(author, title, body, like_count 등)를 80% 이상 공유하지만
+    TIP에는 category가 있고 MAJOR에는 MajorTag 관계가 있는 구조적 차이가 있었다.
+
+  - 해결 과정 및 결과:
+    공통 필드 비율이 높고 Like, Comment FK를 단순하게 유지할 수 있다는 점에서
+    단일 Post 모델에 post_type 컬럼으로 구분하는 방식을 채택했다.
+
+[이슈 2] DSM 외부 API 응답에 cohort 값 부재
+
+  - 발생한 이슈:
+    DSM 외부 API 응답에 cohort(기수) 값이 없어 서버에서 직접 계산해야 했다.
+
+  - 원인 분석:
+    DSM API는 학년/반/번호/이름 등 기본 정보만 반환하며, 기수는 입학 연도 기반 계산값이었다.
+
+  - 해결 과정 및 결과:
+    첫 기수 입학 연도를 기준으로 현재 연도와의 차이로 cohort를 계산하는 로직을 추가.
+    기준 연도를 팀원과 확인 후 적용했다.
+
+
+■ KPT 회고 및 차주 계획
+
+Keep:
+  - ERD를 충분히 설계한 후 모델을 구현해 이후 구조 변경을 최소화했다.
+  - service 레이어 분리로 View 코드가 얇게 유지되고 있다.
+  - F() 표현식 등 ORM 기능을 활용해 안전한 코드를 작성했다.
+
+Problem:
+  - Swagger 없이 개발해 API 응답 구조를 클라이언트 팀에 구두로 공유해야 했다.
+  - 응답 필드가 수시로 바뀌어 소통 비용이 발생했다.
+
+Try:
+  - drf-spectacular로 Swagger 문서를 자동 생성해 API 명세를 공유한다.
+
+차주 개발 계획:
+  - 장소 공유 API 구현 (등록/목록/삭제/장소별 게시글)
+  - AWS S3 이미지 업로드 API 구현
+  - drf-spectacular 기반 Swagger 문서화
+  - 게시글 응답에 is_liked, body, author_id 필드 추가
+  - 전공 목록 조회 API 추가
